@@ -1,0 +1,1185 @@
+﻿<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSafe Pro - Simulador Avanzado de Seguridad en Energías Renovables</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        cyber: {
+                            950: '#030712',
+                            900: '#0b0f19',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151',
+                            accent: '#f59e0b', // Amber/Safety Yellow
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                            rose: '#f43f5e',
+                            purple: '#8b5cf6'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-amber': '0 0 20px rgba(245, 158, 11, 0.25)',
+                        'neon-cyan': '0 0 20px rgba(6, 182, 212, 0.25)',
+                        'neon-rose': '0 0 20px rgba(244, 63, 94, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }        .glass-panel { background: linear-gradient(135deg, rgba(17,24,39,.94), rgba(15,23,42,.82)); backdrop-filter: blur(14px); }
+        .map-zone { transition: all .2s ease; cursor: pointer; }
+        .map-zone:hover, .map-zone.selected { filter: brightness(1.35); stroke: #fbbf24; stroke-width: 3; }
+        .switch-on { background: #10b981 !important; color: #03120d; box-shadow: 0 0 16px rgba(16,185,129,.5); }
+        @media print { body * { visibility: hidden !important; } #certificate, #certificate * { visibility: visible !important; } #certificate { position: absolute; inset: 0; } }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
+        }
+        .animate-glow { animation: pulseGlow 2.5s infinite ease-in-out; }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .scanline::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.3), transparent);
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+        .energy-background {
+            background:
+                radial-gradient(circle at 12% 18%, rgba(245, 158, 11, 0.12), transparent 24rem),
+                radial-gradient(circle at 88% 28%, rgba(6, 182, 212, 0.12), transparent 26rem),
+                linear-gradient(135deg, rgba(3, 7, 18, 0.98), rgba(11, 15, 25, 0.98));
+        }
+        .energy-background::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.22;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: linear-gradient(to bottom, black, transparent 85%);
+        }
+        .energy-orb {
+            position: absolute;
+            width: 18rem;
+            height: 18rem;
+            border-radius: 9999px;
+            pointer-events: none;
+            filter: blur(2px);
+            opacity: 0.16;
+        }
+        .energy-orb-sun {
+            top: 7rem;
+            left: -7rem;
+            border: 1px solid rgba(245, 158, 11, 0.7);
+            box-shadow: 0 0 0 2rem rgba(245, 158, 11, 0.04), 0 0 0 5rem rgba(245, 158, 11, 0.03);
+            animation: solarPulse 6s ease-in-out infinite;
+        }
+        .energy-orb-wind {
+            right: -8rem;
+            bottom: 5rem;
+            border: 1px solid rgba(6, 182, 212, 0.7);
+            box-shadow: 0 0 0 2rem rgba(6, 182, 212, 0.04), 0 0 0 5rem rgba(6, 182, 212, 0.03);
+            animation: windDrift 9s ease-in-out infinite;
+        }
+        .energy-motif {
+            position: absolute;
+            z-index: 0;
+            color: rgba(148, 163, 184, 0.18);
+            pointer-events: none;
+        }
+        .energy-motif-sun {
+            top: 8rem;
+            right: 8%;
+            color: rgba(245, 158, 11, 0.26);
+            animation: solarPulse 6s ease-in-out infinite;
+        }
+        .energy-motif-wind {
+            bottom: 6rem;
+            left: 6%;
+            color: rgba(6, 182, 212, 0.22);
+            animation: windDrift 8s ease-in-out infinite;
+        }
+        .energy-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.5), rgba(6, 182, 212, 0.5), transparent);
+        }
+        @keyframes solarPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.65; }
+            50% { transform: scale(1.08) rotate(8deg); opacity: 1; }
+        }
+        @keyframes windDrift {
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+            50% { transform: translate3d(-12px, -8px, 0) rotate(-5deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .energy-orb-sun, .energy-orb-wind, .energy-motif-sun, .energy-motif-wind {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body class="h-full bg-cyber-950 text-slate-100 font-sans antialiased flex flex-col justify-between selection:bg-amber-500 selection:text-cyber-950 overflow-x-hidden energy-background">
+
+    <div x-data="advancedSimulator()" class="min-h-full flex flex-col justify-between scanline relative" x-init="init()">
+        <!-- Ambient renewable-energy decoration -->
+        <div class="energy-orb energy-orb-sun" aria-hidden="true"></div>
+        <div class="energy-orb energy-orb-wind" aria-hidden="true"></div>
+        <i data-lucide="sun" class="energy-motif energy-motif-sun w-28 h-28" aria-hidden="true"></i>
+        <i data-lucide="wind" class="energy-motif energy-motif-wind w-32 h-32" aria-hidden="true"></i>
+        
+        <!-- Header / HUD Navbar -->
+        <header class="bg-cyber-900/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-50 px-4 py-3 shadow-2xl">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3 cursor-pointer group" @click="returnToHome()">
+                    <div class="bg-gradient-to-br from-amber-500 to-amber-600 p-2.5 rounded-xl text-cyber-950 shadow-neon-amber group-hover:scale-105 transition">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base md:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+                            ECOSAFE <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">PRO V3.5</span>
+                        </h1>
+                        <p class="text-[11px] text-slate-400">Simulador de Seguridad & Protocolos en Energías Renovables</p>
+                    </div>
+                </div>
+
+                <!-- HUD Stats & Progress Tracker -->
+                <template x-if="currentScreen !== 'home'">
+                    <div class="flex items-center flex-wrap gap-3 md:gap-6 bg-cyber-950/80 px-4 py-2 rounded-2xl border border-slate-800">
+                        <!-- XP / Score -->
+                        <div class="flex items-center gap-2">
+                            <div class="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] uppercase font-bold text-slate-400">Puntos XP</span>
+                                <span class="text-xs font-mono font-bold text-amber-400" x-text="xp + ' XP'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Safety Index Meter -->
+                        <div class="flex flex-col">
+                            <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
+                                <span>Índice Seguridad</span>
+                                <span class="font-mono" :class="safetyScore >= 70 ? 'text-emerald-400' : safetyScore >= 40 ? 'text-amber-400' : 'text-rose-400'" x-text="safetyScore + '%'"></span>
+                            </div>
+                            <div class="w-28 md:w-36 bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700/80">
+                                <div class="h-full rounded-full transition-all duration-500 shadow-sm"
+                                     :class="safetyScore >= 70 ? 'bg-emerald-500' : safetyScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'"
+                                     :style="`width: ${safetyScore}%`"></div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Meter badge -->
+                        <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl border text-[11px] font-semibold"
+                             :class="riskLevel === 'BAJO' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : riskLevel === 'MODERADO' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'">
+                            <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                            <span>Riesgo: <strong x-text="riskLevel"></strong></span>
+                        </div>
+
+                        <button @click="returnToHome()" class="text-xs text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-xl transition border border-slate-700 flex items-center gap-1.5">
+                            <i data-lucide="home" class="w-3.5 h-3.5"></i> Menú
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </header>
+
+        <!-- Main Dynamic Viewport -->
+        <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6 my-auto">
+
+            <template x-if="currentScreen !== 'home'">
+                <section class="glass-panel mb-5 rounded-2xl border border-slate-700/80 p-4 shadow-xl">
+                    <div class="flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-3"><i data-lucide="route" class="w-5 h-5 text-cyan-400"></i><div><p class="text-[10px] uppercase tracking-widest text-slate-400">Progreso de entrenamiento</p><p class="text-sm font-bold text-white" x-text="progressLabel"></p></div></div><div class="flex items-center gap-2 text-xs"><span class="px-2 py-1 rounded-lg border" :class="mode==='evaluacion'?'border-rose-500/40 text-rose-300 bg-rose-500/10':'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'" x-text="mode==='evaluacion'?'EVALUACIÓN':'PRÁCTICA'"></span><span class="text-slate-400">Clima: <b class="text-amber-300" x-text="weather.label"></b></span></div></div>
+                    <div class="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-all" :style="`width:${progressPercent}%`"></div></div>
+                    <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]"><div class="bg-slate-950/70 rounded-lg p-2"><span class="text-slate-500">EPP</span><b class="block text-amber-300" x-text="scoreBreakdown.epp+' / 25'"></b></div><div class="bg-slate-950/70 rounded-lg p-2"><span class="text-slate-500">Procedimiento</span><b class="block text-cyan-300" x-text="scoreBreakdown.procedure+' / 35'"></b></div><div class="bg-slate-950/70 rounded-lg p-2"><span class="text-slate-500">Tiempo</span><b class="block text-emerald-300" x-text="scoreBreakdown.time+' / 20'"></b></div><div class="bg-slate-950/70 rounded-lg p-2"><span class="text-slate-500">LOTO</span><b class="block text-purple-300" x-text="scoreBreakdown.loto+' / 20'"></b></div></div>
+                </section>
+            </template>
+
+            <!-- SCREEN 1: HOME & MODULE SELECTOR -->
+            <template x-if="currentScreen === 'home'">
+                <div class="space-y-8 py-6">
+                    <div class="text-center max-w-3xl mx-auto space-y-4">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Plataforma Interactiva de Alta Tensión & Altura
+                        </div>
+                        <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                            Domina la Seguridad en <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">Energías Renovables</span>
+                        </h2>
+                        <p class="text-slate-400 text-sm md:text-base">
+                            Enfréntate a misiones de campo interactivas, equipa EPP especializado clase 0/4, ejecuta secuencias LOTO de seccionamiento y supera emergencias climáticas.
+                        </p>
+                        <div class="energy-divider max-w-sm mx-auto"></div>
+                        <div class="flex justify-center flex-wrap gap-2 text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                            <span class="flex items-center gap-1.5"><i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i> Energía solar</span>
+                            <span class="text-slate-700">•</span>
+                            <span class="flex items-center gap-1.5"><i data-lucide="wind" class="w-3.5 h-3.5 text-cyan-400"></i> Energía eólica</span>
+                            <span class="text-slate-700">•</span>
+                            <span class="flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> Seguridad</span>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-[1.2fr_.8fr] gap-4">
+                        <div class="bg-cyber-900/80 border border-slate-800 rounded-2xl p-4 space-y-3"><div class="flex flex-wrap items-center justify-between gap-3"><label class="text-xs font-bold text-slate-300">Participante <input x-model="participantName" @change="persist()" class="ml-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" placeholder="Nombre completo"></label><div class="flex gap-2"><button @click="setMode('practica')" class="px-3 py-2 rounded-lg text-xs font-bold border" :class="mode==='practica'?'bg-cyan-500/20 border-cyan-400 text-cyan-300':'border-slate-700 text-slate-400'">Práctica</button><button @click="setMode('evaluacion')" class="px-3 py-2 rounded-lg text-xs font-bold border" :class="mode==='evaluacion'?'bg-rose-500/20 border-rose-400 text-rose-300':'border-slate-700 text-slate-400'">Evaluación</button><button @click="toggleMute()" class="p-2 rounded-lg border border-slate-700 text-slate-300"><i :data-lucide="muted?'volume-x':'volume-2'" class="w-4 h-4"></i></button></div></div><div class="flex flex-wrap gap-2"><button @click="continueProgress()" class="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs">Continuar sesión</button><button @click="resetProgress()" class="px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">Restablecer</button><button @click="exportResults()" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs">Exportar resultados</button></div></div>
+                        <div class="bg-cyber-900/80 border border-slate-800 rounded-2xl p-4"><div class="flex justify-between items-center mb-2"><span class="text-xs font-bold text-white">Condiciones y zona</span><span class="text-[10px] text-amber-300" x-text="weather.risk"></span></div><div class="flex gap-2 mb-3"><template x-for="w in weatherOptions"><button @click="setWeather(w.id)" class="flex-1 p-2 rounded-lg border text-[10px]" :class="weather.id===w.id?'border-amber-400 bg-amber-500/15 text-amber-200':'border-slate-700 text-slate-400'" x-text="w.label"></button></template></div><div class="grid grid-cols-3 gap-2"><template x-for="zone in zones"><button @click="selectedZone=zone.id; persist()" class="p-2 rounded-lg border text-left text-[10px]" :class="selectedZone===zone.id?'border-cyan-400 bg-cyan-500/15 text-cyan-200':'border-slate-700 text-slate-400'"><span x-text="zone.icon"></span> <span x-text="zone.name"></span></button></template></div></div>
+                    </div>
+
+                    <!-- Module Cards Grid -->
+                    <div class="grid md:grid-cols-2 gap-6 pt-2">
+                        <!-- Photovoltaic Module -->
+                        <div @click="selectModule('pv')" class="group relative bg-cyber-900 border border-slate-800 hover:border-amber-500/60 rounded-3xl p-6 md:p-8 transition-all duration-300 hover:shadow-neon-amber cursor-pointer overflow-hidden flex flex-col justify-between">
+                            <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl group-hover:bg-amber-500/20 transition"></div>
+                            <div class="space-y-5 relative z-10">
+                                <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition duration-300 shadow-md">
+                                    <i data-lucide="sun" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-white group-hover:text-amber-400 transition">Sistemas Fotovoltaicos (FV)</h3>
+                                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Arco eléctrico DC de hasta 1500V, radiación solar continua, seccionamiento de inversores, bornes y puesta a tierra de estructuras.</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2 pt-2">
+                                    <span class="text-[11px] bg-slate-800/80 text-amber-300 px-3 py-1 rounded-lg border border-slate-700">EPP Arc-Flash 40 cal/cm²</span>
+                                    <span class="text-[11px] bg-slate-800/80 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">Corte DC LOTO</span>
+                                </div>
+                            </div>
+                            <div class="pt-8 flex items-center justify-between text-sm font-semibold text-amber-400 relative z-10">
+                                <span class="flex items-center gap-1.5 group-hover:translate-x-1.5 transition">Iniciar Misión FV <i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+                                <span class="text-xs text-slate-500 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">6 Misiones / 3 Minijuegos</span>
+                            </div>
+                        </div>
+
+                        <!-- Wind Turbine Module -->
+                        <div @click="selectModule('wind')" class="group relative bg-cyber-900 border border-slate-800 hover:border-cyan-500/60 rounded-3xl p-6 md:p-8 transition-all duration-300 hover:shadow-neon-cyan cursor-pointer overflow-hidden flex flex-col justify-between">
+                            <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-500/20 transition"></div>
+                            <div class="space-y-5 relative z-10">
+                                <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition duration-300 shadow-md">
+                                    <i data-lucide="wind" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-white group-hover:text-cyan-400 transition">Parques Eólicos</h3>
+                                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Trabajos en altura extrema (>80m), tormentas eléctricas súbitas, frenado mecánico de emergencia, líneas de vida y puesta a tierra de góndolas.</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2 pt-2">
+                                    <span class="text-[11px] bg-slate-800/80 text-cyan-300 px-3 py-1 rounded-lg border border-slate-700">Arnés Anticaídas Certificado</span>
+                                    <span class="text-[11px] bg-slate-800/80 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">Tormentas y Rayos</span>
+                                </div>
+                            </div>
+                            <div class="pt-8 flex items-center justify-between text-sm font-semibold text-cyan-400 relative z-10">
+                                <span class="flex items-center gap-1.5 group-hover:translate-x-1.5 transition">Iniciar Misión Eólica <i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+                                <span class="text-xs text-slate-500 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">6 Misiones / 3 Minijuegos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Achievements & Trophies Bar -->
+                    <div class="bg-cyber-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
+                                <i data-lucide="award" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Insignias Desbloqueadas (<span x-text="unlockedBadgesCount"></span>/4)</h4>
+                                <p class="text-xs text-slate-400">Completa misiones sin perder índice de seguridad para ganar medallas industriales.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <template x-for="badge in badges">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center border text-xs transition"
+                                     :class="badge.unlocked ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-neon-amber' : 'bg-slate-950 border-slate-800 text-slate-600'"
+                                     :title="badge.name">
+                                    <i :data-lucide="badge.icon" class="w-4 h-4"></i>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- SCREEN 2: MISSION FIELD SIMULATION -->
+            <template x-if="currentScreen === 'mission'">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <!-- Mission Header & Timer bar -->
+                    <div class="flex flex-wrap items-center justify-between bg-cyber-900 p-4 rounded-2xl border border-slate-800 gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-xl bg-slate-800 text-slate-300 border border-slate-700" x-text="activeModule === 'pv' ? 'Misión Fotovoltaica' : 'Misión Eólica'"></span>
+                            <span class="text-xs text-slate-400 font-mono" x-text="`Escenario ${currentMissionIdx + 1} de ${currentMissions.length}`"></span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <!-- Countdown timer -->
+                            <div class="flex items-center gap-2 bg-cyber-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono">
+                                <i data-lucide="timer" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span :class="timer <= 10 ? 'text-rose-400 font-bold animate-pulse' : 'text-slate-300'" x-text="timer + 's'"></span>
+                            </div>
+                            <div class="flex gap-1">
+                                <template x-for="(m, idx) in currentMissions">
+                                    <div class="w-7 h-2 rounded-full transition-all"
+                                         :class="idx === currentMissionIdx ? 'bg-amber-500 w-9' : idx < currentMissionIdx ? 'bg-emerald-500' : 'bg-slate-800'"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mission Card Content -->
+                    <div class="bg-cyber-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
+                        <!-- Hazard badge & Area -->
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-neon-rose">
+                                <i data-lucide="alert-triangle" class="w-4 h-4"></i> <span x-text="currentMission.hazardType"></span>
+                            </span>
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5 bg-cyber-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-cyan-400"></i> Zona: <strong class="text-slate-200" x-text="currentMission.area"></strong>
+                            </span>
+                        </div>
+
+                        <!-- Title & Description -->
+                        <div class="space-y-3">
+                            <h3 class="text-2xl font-bold text-white tracking-tight" x-text="currentMission.title"></h3>
+                            <div class="bg-cyber-950/80 p-5 rounded-2xl border border-slate-800/80 text-slate-300 text-sm md:text-base leading-relaxed" x-text="currentMission.description"></div>
+                        </div>
+
+                        <!-- Interactive EPP Checklist / Equipment Selection if required -->
+                        <template x-if="currentMission.requiresEquipment">
+                            <div class="space-y-3 pt-2 bg-cyber-950/50 p-4 rounded-2xl border border-slate-800">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs uppercase font-extrabold text-amber-400 flex items-center gap-1.5">
+                                        <i data-lucide="shield" class="w-4 h-4"></i> Selección de EPP Requerido (Haz clic para equipar):
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono" x-text="selectedEquipmentCount + '/' + currentMission.requiredEquips.length + ' Seleccionados'"></span>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    <template x-for="eq in currentMission.equipmentOptions">
+                                        <button @click="toggleEquipment(eq.id)"
+                                                class="p-3 rounded-xl border text-left text-xs transition flex flex-col justify-between gap-2 group"
+                                                :class="userEquipment.includes(eq.id) ? 'bg-amber-500/20 border-amber-500 text-white shadow-neon-amber' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'">
+                                            <div class="flex justify-between items-center w-full">
+                                                <i :data-lucide="eq.icon" class="w-5 h-5" :class="userEquipment.includes(eq.id) ? 'text-amber-400' : 'text-slate-500'"></i>
+                                                <div class="w-4 h-4 rounded-full border flex items-center justify-center text-[10px]"
+                                                     :class="userEquipment.includes(eq.id) ? 'bg-amber-500 text-cyber-950 border-amber-500 font-bold' : 'border-slate-700'">
+                                                    <span x-text="userEquipment.includes(eq.id) ? '✓' : ''"></span>
+                                                </div>
+                                            </div>
+                                            <span class="font-medium" x-text="eq.name"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Decision Options -->
+                        <div class="space-y-3 pt-2">
+                            <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Selecciona el protocolo de acción preventivo:</p>
+                            <div class="grid gap-3">
+                                <template x-for="(option, optIdx) in currentMission.options">
+                                    <button @click="selectMissionOption(optIdx)"
+                                            :disabled="answered"
+                                            class="w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-3.5 group"
+                                            :class="getOptionClass(optIdx)">
+                                        <div class="w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold transition group-hover:border-amber-400 group-hover:text-amber-400"
+                                             :class="answered && optIdx === currentMission.correctOption ? 'bg-emerald-500 text-cyber-950 border-emerald-500 shadow-lg' : answered && selectedOption === optIdx ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-800 text-slate-300 border-slate-700'"
+                                             x-text="String.fromCharCode(65 + optIdx)"></div>
+                                        <div class="flex-grow text-sm font-medium" x-text="option.text"></div>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Box After Selection -->
+                        <template x-if="answered">
+                            <div class="mt-6 p-5 rounded-2xl border animate-fadeIn space-y-4 shadow-xl"
+                                 :class="isCorrect ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200' : 'bg-rose-950/40 border-rose-500/50 text-rose-200'">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2.5 rounded-xl" :class="isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'">
+                                        <i :data-lucide="isCorrect ? 'check-circle-2' : 'x-circle'" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-base" x-text="isCorrect ? '¡Protocolo Ejecutado con Éxito! (+50 XP)' : '¡Falla Crítica de Seguridad! (-25% Índice)'"></h4>
+                                        <p class="text-xs opacity-90" x-text="isCorrect ? 'Normativa de seguridad cumplida correctamente.' : 'La acción tomada infringe los estándares OSHA / NFPA 70E.'"></p>
+                                    </div>
+                                </div>
+                                <div class="text-xs md:text-sm bg-cyber-950/80 p-4 rounded-xl border border-slate-800 text-slate-300 leading-relaxed" x-text="currentMission.explanation"></div><div class="text-[11px] bg-cyan-950/30 border border-cyan-500/20 rounded-xl p-3 text-cyan-100"><b>Aprendizaje:</b> revisa el peligro, detén la tarea y aplica controles antes de continuar.<br><span class="text-cyan-300/80">Referencia: OSHA 1910.333 · NFPA 70E (2024) · IEC 60364/61439.</span></div>
+                                
+                                <div class="flex justify-end pt-2">
+                                    <button @click="nextMissionStep()" class="bg-amber-500 hover:bg-amber-400 text-cyber-950 font-bold px-6 py-3 rounded-xl transition flex items-center gap-2 shadow-neon-amber">
+                                        <span x-text="currentMissionIdx < currentMissions.length - 1 ? 'Siguiente Misión' : 'Iniciar Mini-Juego de Emergencia'"></span>
+                                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- SCREEN 3: LOTO & GROUNDING SCHEMATIC SIMULATOR -->
+            <template x-if="currentScreen === 'loto'">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="bg-cyber-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+                        <div class="flex items-center justify-between">
+                            <span class="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold">Simulador Interactivo de Seccionamiento LOTO & Puesta a Tierra</span>
+                            <span class="text-xs text-slate-400 font-mono">Secuencia de Bloqueo</span>
+                        </div>
+
+                        <div class="space-y-2">
+                            <h3 class="text-xl font-bold text-white">Secuencia Correcta de Desenergización y Puesta a Tierra</h3>
+                            <p class="text-xs text-slate-400">Haz clic en los interruptores, seccionadores y barras en el orden técnico correcto para asegurar el equipo antes de intervenir.</p>
+                        </div>
+
+                        <!-- Schematic Grid -->
+                        <div class="grid sm:grid-cols-3 gap-4">
+                            <template x-for="step in lotoSteps">
+                                <button @click="clickLotoStep(step.id)"
+                                        class="p-4 rounded-2xl border text-left transition flex flex-col justify-between gap-4 group"
+                                        :class="step.done ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-300' : 'bg-cyber-950/80 border-slate-800 hover:border-slate-700 text-slate-300'">
+                                    <div class="flex items-center justify-between w-full">
+                                        <span class="w-7 h-7 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xs font-bold" x-text="step.id"></span>
+                                        <i :data-lucide="step.done ? 'check-circle' : 'lock'" class="w-5 h-5" :class="step.done ? 'text-emerald-400' : 'text-slate-500'"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-white" x-text="step.title"></h4>
+                                        <p class="text-[11px] text-slate-400 mt-1" x-text="step.desc"></p>
+                                    </div>
+                                    <span class="text-[10px] font-mono px-2 py-1 rounded bg-slate-900 border border-slate-800 w-fit"
+                                          x-text="step.done ? 'COMPLETADO ✓' : 'PENDIENTE'"></span>
+                                </button>
+                            </template>
+                        </div>
+
+                        <div class="bg-slate-950/70 rounded-2xl border border-slate-800 p-4"><div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-white">Panel físico de control</span><span class="text-[10px] text-slate-500">Orden obligatorio</span></div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2"><template x-for="sw in lotoSwitches"><button @click="toggleSwitch(sw.id)" class="p-3 rounded-xl border border-slate-700 text-xs font-bold" :class="sw.on?'switch-on':'bg-slate-800 text-slate-300'"><span class="block text-lg" x-text="sw.on?'●':'○'"></span><span x-text="sw.label"></span></button></template></div><p class="mt-3 text-[11px] text-slate-400" x-text="lotoMessage"></p></div>
+                        <template x-if="lotoCompleted">
+                            <div class="bg-emerald-950/40 border border-emerald-500/50 p-5 rounded-2xl space-y-3 animate-fadeIn text-center">
+                                <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/40">
+                                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-white">¡Aislamiento LOTO Completado Exitosamente! (+100 XP)</h4>
+                                <p class="text-xs text-slate-300">El sistema se encuentra totalmente seccionado, bloqueado, descargado y puesto a tierra para intervención segura.</p>
+                                <div class="pt-2">
+                                    <button @click="finishModule()" class="bg-emerald-500 hover:bg-emerald-400 text-cyber-950 font-bold px-8 py-3 rounded-xl transition shadow-lg">
+                                        Ver Resultados del Módulo
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- SCREEN 4: EMERGENCY MINI-GAME -->
+            <template x-if="currentScreen === 'minigame'">
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <div class="bg-cyber-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl text-center relative overflow-hidden">
+                        <div class="absolute -top-12 -right-12 w-40 h-40 bg-rose-500/10 rounded-full blur-3xl"></div>
+                        
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold animate-pulse">
+                            <i data-lucide="alert-octagon" class="w-4 h-4"></i> Desafío de Emergencia Cronometrado
+                        </div>
+
+                        <div class="space-y-3">
+                            <h3 class="text-2xl font-bold text-white" x-text="minigameScenario.title"></h3>
+                            <p class="text-xs md:text-sm text-slate-300 leading-relaxed" x-text="minigameScenario.description"></p>
+                            <div class="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                                <span x-text="`Respuesta de emergencia ${minigameIdx + 1} de ${minigameScenarios.length}`"></span>
+                                <span class="text-rose-400">•</span>
+                                <span>Secuencia crítica</span>
+                            </div>
+                        </div>
+
+                        <!-- Mini game timer -->
+                        <div class="bg-cyber-950 p-4 rounded-2xl border border-slate-800 flex items-center justify-around">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] uppercase font-bold text-slate-400">Tiempo Restante</span>
+                                <span class="text-2xl font-mono font-extrabold text-rose-400" x-text="mgTimer + 's'"></span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] uppercase font-bold text-slate-400">Estado</span>
+                                <span class="text-sm font-bold text-amber-400" x-text="mgAnswered ? 'Resuelto' : '¡Actúa Rápido!'"></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-left"><button @click="setEmergencyFlow('shock')" class="p-3 rounded-xl border" :class="emergencyFlow==='shock'?'border-rose-400 bg-rose-500/15':'border-slate-700'"><b class="text-xs text-white">⚡ Choque eléctrico</b><span class="block text-[10px] text-slate-400">Aislar, llamar ayuda, RCP/DEA</span></button><button @click="setEmergencyFlow('suspension')" class="p-3 rounded-xl border" :class="emergencyFlow==='suspension'?'border-amber-400 bg-amber-500/15':'border-slate-700'"><b class="text-xs text-white">🧗 Suspensión en altura</b><span class="block text-[10px] text-slate-400">Rescate planificado</span></button></div>
+                        <div class="text-left text-[11px] text-slate-300 bg-slate-950/70 border border-slate-800 rounded-xl p-3"><b>Flujo recomendado:</b> <span x-text="emergencyFlow==='shock'?'No tocar hasta aislar la fuente; activar emergencias, evaluar respiración y usar DEA/RCP si corresponde.':'Comunicar ubicación, asegurar rescate desde zona segura, mantener comunicación y evitar el síndrome del arnés; no desconectar sin plan.'"></span></div>                        <div class="grid gap-3 pt-2">
+                            <template x-for="(opt, idx) in minigameScenario.options">
+                                <button @click="answerMinigame(idx)"
+                                        :disabled="mgAnswered"
+                                        class="w-full text-left p-4 rounded-2xl border transition flex items-center justify-between group"
+                                        :class="mgAnswered && idx === minigameScenario.correct ? 'bg-emerald-950/50 border-emerald-500 text-emerald-200' : mgAnswered && mgSelected === idx ? 'bg-rose-950/50 border-rose-500 text-rose-200' : 'bg-cyber-950 border-slate-800 hover:border-slate-700 text-slate-300'">
+                                    <span class="text-sm font-medium" x-text="opt"></span>
+                                    <template x-if="mgAnswered && idx === minigameScenario.correct">
+                                        <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+                                    </template>
+                                </button>
+                            </template>
+                        </div>
+
+                        <template x-if="mgAnswered">
+                            <div class="pt-4 animate-fadeIn">
+                                <button @click="nextMinigameStep()" class="bg-amber-500 hover:bg-amber-400 text-cyber-950 font-bold px-8 py-3 rounded-xl transition shadow-neon-amber w-full">
+                                    <span x-text="minigameIdx < minigameScenarios.length - 1 ? 'Siguiente emergencia →' : 'Continuar al Seccionamiento LOTO →'"></span>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- SCREEN 5: MODULE SUMMARY & RESULTS -->
+            <template x-if="currentScreen === 'summary'">
+                <div class="max-w-xl mx-auto text-center space-y-6 py-4 bg-cyber-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
+                    <div class="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center shadow-lg border"
+                         :class="safetyScore >= 75 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-lg' : safetyScore >= 50 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'">
+                        <i :data-lucide="safetyScore >= 75 ? 'award' : 'alert-triangle'" class="w-10 h-10"></i>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="text-2xl font-extrabold text-white">¡Misión Completada con Éxito!</h3>
+                        <p class="text-xs text-slate-400" x-text="activeModule === 'pv' ? 'Módulo: Sistemas Fotovoltaicos' : 'Módulo: Sistemas Eólicos'"></p>
+                    </div>
+
+                    <div class="bg-cyber-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                                <span class="text-[10px] uppercase font-bold text-slate-400">Puntaje Final</span>
+                                <div class="text-2xl font-extrabold font-mono" :class="safetyScore >= 75 ? 'text-emerald-400' : safetyScore >= 50 ? 'text-amber-400' : 'text-rose-400'" x-text="safetyScore + '%' "></div>
+                            </div>
+                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                                <span class="text-[10px] uppercase font-bold text-slate-400">XP Obtenida</span>
+                                <div class="text-2xl font-extrabold font-mono text-amber-400" x-text="xp + ' XP'"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed" x-text="getScoreMessage()"></p>
+                    </div>
+
+                    <div id="certificate" class="bg-gradient-to-br from-slate-900 to-cyan-950/40 border border-cyan-500/30 rounded-2xl p-5 text-left"><div class="flex items-center gap-3"><i data-lucide="badge-check" class="w-8 h-8 text-amber-400"></i><div><h4 class="font-bold text-white">Certificado de participación</h4><p class="text-[11px] text-slate-400" x-text="participantName || 'Participante'"></p></div></div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300"><span>Módulo: <b x-text="moduleName"></b></span><span>Calificación: <b x-text="finalRating"></b></span><span>Fecha/hora: <b x-text="certificateDate"></b></span><span>Folio: <b x-text="folio"></b></span></div><button @click="downloadCertificate()" class="mt-4 w-full py-2 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold">Descargar certificado HTML</button></div>
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button @click="restartModule()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition border border-slate-700 flex items-center justify-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Repetir Misión
+                        </button>
+                        <button @click="returnToHome()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-cyber-950 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-neon-amber">
+                            <i data-lucide="home" class="w-4 h-4"></i> Menú Principal
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-cyber-900/90 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+            <p>EcoSafe Pro • Simulador Avanzado de Prevención de Riesgos en Energías Renovables (OSHA / NFPA 70E / IEC)</p>
+        </footer>
+
+    </div>
+
+    <script>
+        function advancedSimulator() {
+            return {
+                currentScreen: 'home', // home, mission, loto, minigame, summary
+                participantName: '', mode: 'practica', muted: false, selectedZone: 'field', folio: '', certificateDate: '', scoreBreakdown: {epp:0, procedure:0, time:0, loto:0}, weatherOptions: [{id:'clear',label:'☀️ Despejado',risk:'Riesgo base'},{id:'wind',label:'💨 Viento alto',risk:'Riesgo elevado en altura'},{id:'storm',label:'⛈️ Tormenta',risk:'Trabajo suspendido'}], weather: {id:'clear',label:'☀️ Despejado',risk:'Riesgo base'}, zones: [{id:'field',name:'Campo FV',icon:'☀️'},{id:'inverter',name:'Inversor',icon:'🔌'},{id:'turbine',name:'Turbina',icon:'🌀'}], lotoSwitches: [{id:'dc',label:'Seccionador DC',on:false},{id:'ac',label:'Seccionador AC',on:false},{id:'test',label:'Medidor CAT IV',on:false},{id:'earth',label:'Tierra temporal',on:false}], lotoMessage: 'Activa los controles siguiendo la secuencia LOTO.', emergencyFlow: 'shock',
+                activeModule: 'pv', // pv or wind
+                safetyScore: 100,
+                xp: 0,
+                riskLevel: 'BAJO',
+                currentMissionIdx: 0,
+                timer: 45,
+                timerInterval: null,
+                answered: false,
+                selectedOption: null,
+                isCorrect: false,
+
+                // EPP gear state
+                userEquipment: [],
+                
+                // LOTO state
+                lotoSteps: [
+                    { id: 1, title: "Seccionamiento DC/AC", desc: "Abrir interruptores principales bajo carga cero", done: false },
+                    { id: 2, title: "Bloqueo y Etiquetado (LOTO)", desc: "Colocar candado de seguridad y tarjeta de prohibición", done: false },
+                    { id: 3, title: "Verificación de Ausencia de Tensión", desc: "Medir con multímetro CAT IV homologado", done: false },
+                    { id: 4, title: "Puesta a Tierra Temporal", desc: "Conectar cables equipotenciales a tierra de referencia", done: false }
+                ],
+                lotoCompleted: false,
+
+                // Minigame state
+                mgTimer: 20,
+                mgInterval: null,
+                mgAnswered: false,
+                mgSelected: null,
+                minigameIdx: 0,
+                minigameScenarios: [],
+
+                badges: [
+                    { id: 1, name: "Maestro EPP DC", icon: "shield", unlocked: false },
+                    { id: 2, name: "Experto LOTO", icon: "lock", unlocked: false },
+                    { id: 3, name: "Anti-Tormentas Eólicas", icon: "wind", unlocked: false },
+                    { id: 4, name: "Seguridad 100%", icon: "award", unlocked: false }
+                ],
+
+                missionsData: {
+                    pv: [
+                        {
+                            title: "Conexión de Strings DC bajo Irradiancia Solar Directa",
+                            area: "Campo Solar / Inversores DC",
+                            hazardType: "Riesgo de Arco Eléctrico DC (hasta 1500V)",
+                            description: "Te dispones a conectar los ramales de strings fotovoltaicos. La tensión Voc en circuito abierto supera los 1000V DC. El sol se encuentra en cenit.",
+                            requiresEquipment: true,
+                            requiredEquips: ['helmet', 'gloves_class4', 'visor', 'tools'],
+                            equipmentOptions: [
+                                { id: 'helmet', name: 'Casco Dieléctrico Clase E', icon: 'hard-hat' },
+                                { id: 'gloves_class4', name: 'Guantes Dieléctricos Clase 4', icon: 'shield' },
+                                { id: 'visor', name: 'Pantalla Facial Arc-Flash', icon: 'eye' },
+                                { id: 'tools', name: 'Herramienta Aislada 1000V', icon: 'tool' }
+                            ],
+                            options: [
+                                { text: "Conectar de inmediato usando guantes de carnaza comunes para agilizar el montaje.", correct: false },
+                                { text: "Equipar EPP Arc-Flash certificado, guantes dieléctricos y herramientas aisladas asegurando seccionamiento previo.", correct: true },
+                                { text: "Tapar los paneles con lonas oscuras y trabajar sin guantes para mayor sensibilidad táctil.", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. Los sistemas FV en DC no se pueden apagar con interruptores convencionales mientras reciban luz. El EPP dieléctrico completo y herramientas aisladas evitan accidentes fatales."
+                        },
+                        {
+                            title: "Mantenimiento Preventivo en Inversor Central",
+                            area: "Sala de Conversión AC/DC",
+                            hazardType: "Riesgo de Capacitores y Descarga Mortal",
+                            description: "El inversor central se ha detenido por baja radiación. Debes revisar los bornes internos y barras colectoras de CC.",
+                            requiresEquipment: false,
+                            options: [
+                                { text: "Abrir el panel frontal e iniciar inspección visual inmediata.", correct: false },
+                                { text: "Aplicar protocolo LOTO, verificar ausencia de tensión y esperar el tiempo de descarga de condensadores internos.", correct: true },
+                                { text: "Desconectar únicamente el interruptor general de corriente alterna (AC).", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. Los condensadores masivos de los inversores almacenan energía letal incluso después de interrumpir la entrada de corriente."
+                        },
+                        {
+                            title: "Inspección de Puesta a Tierra en Estructuras Portantes",
+                            area: "Racks y Mesas Fotovoltaicas",
+                            hazardType: "Riesgo de Rayos y Falla a Tierra",
+                            description: "Se detecta corrosión avanzada en los chicotes de unión equipotencial de las estructuras metálicas soporte de los paneles.",
+                            requiresEquipment: false,
+                            options: [
+                                { text: "Ignorarlo ya que las estructuras están apoyadas sobre suelo seco.", correct: false },
+                                { text: "Detener la operación, reparar los conductores de puesta a tierra y asegurar continuidad galvánica.", correct: true },
+                                { text: "Aplicar pintura sintética aislante sobre las conexiones corroídas.", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. La continuidad de puesta a tierra es vital para derivar sobretensiones por rayos y fallas a tierra que electrificarían los marcos de los módulos."
+                        },
+                        {
+                            title: "Limpieza de Módulos con Pértiga en Cubierta Inclinada",
+                            area: "Cubierta Industrial / Altura",
+                            hazardType: "Riesgo de Caídas y Contacto con Agua",
+                            description: "Debes limpiar paneles solares en una cubierta a 12 metros de altura utilizando agua presurizada y pértigas telescópicas.",
+                            requiresEquipment: true,
+                            requiredEquips: ['harness', 'helmet', 'boots'],
+                            equipmentOptions: [
+                                { id: 'harness', name: 'Arnés Anticaídas Certificado', icon: 'shield-alert' },
+                                { id: 'helmet', name: 'Casco con Barbuquejo', icon: 'hard-hat' },
+                                { id: 'boots', name: 'Calzado Antideslizante Dieléctrico', icon: 'zap' },
+                                { id: 'radio', name: 'Radio Portátil', icon: 'radio' }
+                            ],
+                            options: [
+                                { text: "Utilizar arnés anticaídas certificado, línea de vida y calzado dieléctrico antideslizante.", correct: true },
+                                { text: "Trabajar sin arnés si la pendiente del tejado es inferior a 20 grados.", correct: false },
+                                { text: "Usar zapatillas de lona para mayor flexibilidad al caminar sobre los paneles.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. El agua combinada con superficies inclinadas eleva exponencialmente el riesgo de caídas de altura y derivaciones eléctricas."
+                        },
+                        {
+                            title: "Termografía de Conectores y Puntos Calientes",
+                            area: "Campo Solar / Cajas combinadoras",
+                            hazardType: "Riesgo de Sobrecalentamiento e Incendio",
+                            description: "La inspección termográfica detecta un conector MC4 con temperatura anormal. El string continúa energizado y hay radiación intensa.",
+                            requiresEquipment: true,
+                            requiredEquips: ['helmet', 'gloves_class4', 'visor'],
+                            equipmentOptions: [
+                                { id: 'helmet', name: 'Casco Dieléctrico Clase E', icon: 'hard-hat' },
+                                { id: 'gloves_class4', name: 'Guantes Dieléctricos Clase 4', icon: 'shield' },
+                                { id: 'visor', name: 'Pantalla Facial Arc-Flash', icon: 'eye' },
+                                { id: 'radio', name: 'Radio de Campo', icon: 'radio' }
+                            ],
+                            options: [
+                                { text: "Apretar el conector con la mano mientras el string permanece energizado.", correct: false },
+                                { text: "Señalizar el punto caliente, retirar al personal y programar aislamiento LOTO antes de intervenir.", correct: true },
+                                { text: "Cubrir el conector con cinta aislante sin detener la operación.", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. Un punto caliente puede evolucionar a arco o incendio. La termografía sirve para detectar la anomalía, no autoriza a intervenir un circuito energizado."
+                        },
+                        {
+                            title: "Baterías de Respaldo en Sala de Energía",
+                            area: "Sala de Baterías / Sistema FV",
+                            hazardType: "Riesgo Químico y de Cortocircuito",
+                            description: "Una batería presenta abultamiento y olor extraño. El banco está conectado al sistema de respaldo y el área tiene ventilación limitada.",
+                            requiresEquipment: true,
+                            requiredEquips: ['helmet', 'gloves_class4', 'visor'],
+                            equipmentOptions: [
+                                { id: 'helmet', name: 'Casco de Seguridad', icon: 'hard-hat' },
+                                { id: 'gloves_class4', name: 'Guantes Dieléctricos', icon: 'shield' },
+                                { id: 'visor', name: 'Protección Facial', icon: 'eye' },
+                                { id: 'boots', name: 'Botas Dieléctricas', icon: 'zap' }
+                            ],
+                            options: [
+                                { text: "Aislar el banco, ventilar y notificar al responsable antes de acercarse a la batería dañada.", correct: true },
+                                { text: "Perforar la carcasa para liberar la presión acumulada.", correct: false },
+                                { text: "Desconectar un solo borne con una herramienta metálica común.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. Una batería deformada puede liberar gases y energía peligrosa. Se debe aislar, ventilar y aplicar el procedimiento específico del fabricante."
+                        }
+                    ],
+                    wind: [
+                        {
+                            title: "Ascenso a Torre Eólica con Alerta Meteorológica",
+                            area: "Aerogenerador / Torre Tubular",
+                            hazardType: "Riesgo de Rayos y Colapso Estructural",
+                            description: "Debes subir a la góndola a 90 metros de altura para mantenimiento preventivo, pero el radar indica tormentas eléctricas cercanas.",
+                            requiresEquipment: true,
+                            requiredEquips: ['harness', 'helmet', 'radio'],
+                            equipmentOptions: [
+                                { id: 'harness', name: 'Arnés Anticaídas Completo', icon: 'shield-alert' },
+                                { id: 'helmet', name: 'Casco Industrial', icon: 'hard-hat' },
+                                { id: 'radio', name: 'Radio de Emergencia', icon: 'radio' },
+                                { id: 'gloves', name: 'Guantes de Cuero', icon: 'shield' }
+                            ],
+                            options: [
+                                { text: "Subir rápidamente antes de que comience la lluvia para terminar pronto.", correct: false },
+                                { text: "Suspender inmediatamente el ascenso y esperar la luz verde del sistema de alerta de tormentas.", correct: true },
+                                { text: "Ascender usando la escalera interna sin conectar el carro anticaídas para mayor velocidad.", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. Las torres eólicas funcionan como imanes de rayos en zonas descampadas. Ascender con tormenta es una sentencia de muerte."
+                        },
+                        {
+                            title: "Desbocamiento de Rotor por Falla en Sistema Pitch",
+                            area: "Góndola / Buje de Palas",
+                            hazardType: "Riesgo Mecánico Extremo / Vibración",
+                            description: "Vientos súbitos golpean el parque y el sistema de orientación de palas (pitch) falla. El rotor comienza a girar a velocidad descontrolada.",
+                            requiresEquipment: false,
+                            options: [
+                                { text: "Accionar de inmediato el freno mecánico de emergencia y los pernos de bloqueo físico del rotor.", correct: true },
+                                { text: "Intentar frenar el eje principal manualmente con una barra de acero dentro de la góndola.", correct: false },
+                                { text: "Esperar sentado a que el viento disminuya mientras se reinicia el software.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. Ante un desbocamiento, el freno mecánico de emergencia y los pines de bloqueo físico son la última línea de defensa contra daños estructurales catastróficos."
+                        },
+                        {
+                            title: "Inspección de Línea de Vida Vertical en Escalera",
+                            area: "Interior de Torre / Sistema Anticaídas",
+                            hazardType: "Riesgo de Caída Vertical (>80m)",
+                            description: "Te dispones a ascender por la escalerilla interior vertical asistida por un cable de acero fijo.",
+                            requiresEquipment: true,
+                            requiredEquips: ['harness', 'carabiner', 'helmet'],
+                            equipmentOptions: [
+                                { id: 'harness', name: 'Arnés de Cuerpo Entero', icon: 'shield-alert' },
+                                { id: 'carabiner', name: 'Carro Deslizante Homologado', icon: 'link' },
+                                { id: 'helmet', name: 'Casco con Barbuquejo', icon: 'hard-hat' },
+                                { id: 'rope', name: 'Cuerda Estática', icon: 'activity' }
+                            ],
+                            options: [
+                                { text: "Conectar el arnés al carro deslizante anticaídas homologado en el cable guía.", correct: true },
+                                { text: "Sujetar la eslinga directamente a los peldaños de la escalera mientras se asciende.", correct: false },
+                                { text: "Subir sin arnés confiando en los aros protectores de espalda antiguos.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. El carro anticaídas deslizante se bloquea instantáneamente ante cualquier aceleración hacia abajo, evitando la caída libre."
+                        },
+                        {
+                            title: "Mantenimiento en Generador y Descarga Estática",
+                            area: "Generador Síncrono / Góndola",
+                            hazardType: "Riesgo de Inducción Estática Masiva",
+                            description: "Las palas de fibra de vidrio acumulan enormes cargas electrostáticas por fricción con el viento. Debes intervenir los devanados.",
+                            requiresEquipment: false,
+                            options: [
+                                { text: "Instalar puestas a tierra temporales y descargar equipotencialmente los devanados antes de tocar.", correct: true },
+                                { text: "Tocar los bornes con las manos desnudas para descargar la electricidad estática.", correct: false },
+                                { text: "Utilizar guantes de tela de algodón delgados para aislar la estática.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. Las descargas estáticas acumuladas en aerogeneradores pueden causar arcos eléctricos severos si no se usan tierras temporales de descarga."
+                        },
+                        {
+                            title: "Derrame de Aceite en la Góndola",
+                            area: "Góndola / Multiplicadora",
+                            hazardType: "Riesgo de Resbalón e Incendio",
+                            description: "Se observa un derrame de aceite hidráulico cerca de la multiplicadora. La turbina está detenida, pero la superficie es estrecha y elevada.",
+                            requiresEquipment: true,
+                            requiredEquips: ['harness', 'helmet', 'boots'],
+                            equipmentOptions: [
+                                { id: 'harness', name: 'Arnés Anticaídas', icon: 'shield-alert' },
+                                { id: 'helmet', name: 'Casco con Barbuquejo', icon: 'hard-hat' },
+                                { id: 'boots', name: 'Calzado Antideslizante', icon: 'zap' },
+                                { id: 'gloves', name: 'Guantes de Protección', icon: 'shield' }
+                            ],
+                            options: [
+                                { text: "Asegurar el rotor, usar arnés y kit absorbente, y reportar el derrame antes de limpiar.", correct: true },
+                                { text: "Caminar sobre el aceite con cuidado para terminar la inspección.", correct: false },
+                                { text: "Usar agua a presión para empujar el aceite hacia el exterior.", correct: false }
+                            ],
+                            correctOption: 0,
+                            explanation: "Correcto. El aceite crea riesgo de caída y puede alimentar un incendio. Primero se asegura la máquina y se contiene el derrame con medios aprobados."
+                        },
+                        {
+                            title: "Comunicación durante Mantenimiento Remoto",
+                            area: "Centro de Control / Parque Eólico",
+                            hazardType: "Riesgo de Arranque Inesperado",
+                            description: "El centro de control solicita reiniciar la turbina mientras un técnico revisa sensores en la góndola. La comunicación por radio es intermitente.",
+                            requiresEquipment: true,
+                            requiredEquips: ['harness', 'helmet', 'radio'],
+                            equipmentOptions: [
+                                { id: 'harness', name: 'Arnés Anticaídas', icon: 'shield-alert' },
+                                { id: 'helmet', name: 'Casco Industrial', icon: 'hard-hat' },
+                                { id: 'radio', name: 'Radio Operativa', icon: 'radio' },
+                                { id: 'gloves', name: 'Guantes de Protección', icon: 'shield' }
+                            ],
+                            options: [
+                                { text: "Autorizar el reinicio porque el técnico ya conoce el procedimiento.", correct: false },
+                                { text: "Mantener el bloqueo, confirmar contacto directo y liberar la máquina solo con autorización del responsable.", correct: true },
+                                { text: "Reiniciar durante diez segundos para comprobar si el sensor responde.", correct: false }
+                            ],
+                            correctOption: 1,
+                            explanation: "Correcto. Ningún reinicio remoto debe ocurrir sin comunicación positiva, despeje del personal y liberación formal del bloqueo."
+                        }
+                    ]
+                },
+
+                get currentMissions() {
+                    return this.missionsData[this.activeModule];
+                },
+
+                get currentMission() {
+                    return this.currentMissions[this.currentMissionIdx];
+                },
+
+                get selectedEquipmentCount() {
+                    return this.userEquipment.length;
+                },
+
+                get unlockedBadgesCount() {
+                    return this.badges.filter(b => b.unlocked).length;
+                },
+
+                get progressPercent() { return this.currentScreen === 'mission' ? Math.round((this.currentMissionIdx / this.currentMissions.length) * 65) : this.currentScreen === 'loto' ? 88 : this.currentScreen === 'summary' ? 100 : 0; },
+                get progressLabel() { return this.currentScreen === 'mission' ? `Misión ${this.currentMissionIdx + 1} de ${this.currentMissions.length}` : this.currentScreen === 'loto' ? 'LOTO y verificación final' : 'Resultados emitidos'; },
+                get moduleName() { return this.activeModule === 'pv' ? 'Sistemas Fotovoltaicos' : 'Sistemas Eólicos'; },
+                get finalRating() { const n=this.safetyScore; return n>=90?'EXCELENTE':n>=75?'SATISFACTORIO':n>=60?'EN DESARROLLO':'NO APTO'; },
+                persist() { localStorage.setItem('ecosafe-progress', JSON.stringify({participantName:this.participantName,mode:this.mode,muted:this.muted,activeModule:this.activeModule,selectedZone:this.selectedZone,weather:this.weather,scoreBreakdown:this.scoreBreakdown,safetyScore:this.safetyScore,xp:this.xp})); },
+                restore() { try { const d=JSON.parse(localStorage.getItem('ecosafe-progress')||'null'); if(d) Object.assign(this,d); } catch(e) {} },
+                resetProgress() { localStorage.removeItem('ecosafe-progress'); location.reload(); },
+                continueProgress() { this.currentScreen='mission'; this.startTimer(); },
+                setMode(m) { this.mode=m; this.persist(); }, setWeather(id) { this.weather=this.weatherOptions.find(w=>w.id===id)||this.weatherOptions[0]; if(id==='storm') this.riskLevel='CRÍTICO'; this.persist(); }, toggleMute() { this.muted=!this.muted; this.persist(); setTimeout(()=>lucide.createIcons(),20); },
+                setEmergencyFlow(flow) { this.emergencyFlow=flow; },
+                exportResults() { const data={participante:this.participantName,modulo:this.moduleName,puntaje:this.safetyScore,calificacion:this.finalRating,desglose:this.scoreBreakdown,fecha:new Date().toISOString()}; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='ecosafe-resultados.json';a.click(); },
+                downloadCertificate() { const html=`<!doctype html><html lang='es'><meta charset='utf-8'><title>Certificado EcoSafe</title><style>body{font-family:Arial;background:#07111f;color:#fff;padding:12%;text-align:center}main{border:4px solid #f59e0b;padding:50px;background:#10253b}h1{color:#fbbf24}</style><main><h1>ECOSAFE PRO</h1><h2>Certificado de participación</h2><p>Se certifica a <b>${this.participantName||'Participante'}</b></p><p>${this.moduleName} · Puntaje ${this.safetyScore}% · ${this.finalRating}</p><p>Fecha y hora: ${this.certificateDate} · Folio: ${this.folio}</p><small>OSHA 1910.333 · NFPA 70E · IEC 60364/61439</small></main></html>`; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download=`certificado-${this.folio}.html`;a.click(); },
+                init() { this.restore();
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                selectModule(mod) {
+                    this.activeModule = mod;
+                    this.currentMissionIdx = 0;
+                    this.safetyScore = 100;
+                    this.xp = 0;
+                    this.riskLevel = 'BAJO';
+                    this.userEquipment = [];
+                    this.minigameScenarios = [];
+                    this.currentScreen = 'mission';
+                    this.folio = 'ES-'+Date.now().toString(36).toUpperCase(); this.certificateDate = new Date().toLocaleString('es-MX'); this.scoreBreakdown={epp:0,procedure:0,time:0,loto:0}; this.persist();
+                    this.startTimer();
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                startTimer() {
+                    clearInterval(this.timerInterval);
+                    this.timer = 45;
+                    this.timerInterval = setInterval(() => {
+                        if (this.timer > 0 && !this.answered) {
+                            this.timer--;
+                        } else if (this.timer === 0 && !this.answered) {
+                            this.selectMissionOption(99); // Timeout penalty
+                        }
+                    }, 1000);
+                },
+
+                toggleEquipment(eqId) {
+                    if (this.answered) return;
+                    if (this.userEquipment.includes(eqId)) {
+                        this.userEquipment = this.userEquipment.filter(id => id !== eqId);
+                    } else {
+                        this.userEquipment.push(eqId);
+                    }
+                },
+
+                selectMissionOption(optIdx) {
+                    if (this.answered) return;
+                    clearInterval(this.timerInterval);
+                    this.selectedOption = optIdx;
+                    this.answered = true;
+
+                    // Validate equipment if required
+                    let equipmentOk = true;
+                    if (this.currentMission.requiresEquipment) {
+                        for (let req of this.currentMission.requiredEquips) {
+                            if (!this.userEquipment.includes(req)) equipmentOk = false;
+                        }
+                    }
+
+                    this.isCorrect = (optIdx === this.currentMission.correctOption && equipmentOk);
+
+                    if (this.isCorrect) {
+                        this.scoreBreakdown.procedure = Math.min(35, this.scoreBreakdown.procedure + 8);
+                        this.scoreBreakdown.time = Math.min(20, this.scoreBreakdown.time + (this.timer > 20 ? 4 : 2));
+                        if (this.currentMission.requiresEquipment) this.scoreBreakdown.epp = Math.min(25, this.scoreBreakdown.epp + 6);
+                        this.xp += 50;
+                        this.safetyScore = Math.min(100, this.safetyScore + 5);
+                    } else {
+                        this.safetyScore = Math.max(0, this.safetyScore - 25);
+                        this.xp = Math.max(0, this.xp - 10);
+                    }
+
+                    this.updateRiskLevel();
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                updateRiskLevel() {
+                    if (this.safetyScore >= 80) this.riskLevel = 'BAJO';
+                    else if (this.safetyScore >= 50) this.riskLevel = 'MODERADO';
+                    else this.riskLevel = 'CRÍTICO';
+                },
+
+                nextMissionStep() {
+                    if (this.currentMissionIdx < this.currentMissions.length - 1) {
+                        this.currentMissionIdx++;
+                        this.answered = false;
+                        this.selectedOption = null;
+                        this.userEquipment = [];
+                        this.isCorrect = false;
+                        this.startTimer();
+                    } else {
+                        // Transition to Mini-Game Emergency Challenge
+                        this.startMinigame();
+                    }
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                startMinigame() {
+                    this.currentScreen = 'minigame';
+                    this.minigameIdx = 0;
+                    this.mgTimer = 20;
+                    this.mgAnswered = false;
+                    this.mgSelected = null;
+                    clearInterval(this.mgInterval);
+                    this.mgInterval = setInterval(() => {
+                        if (this.mgTimer > 0 && !this.mgAnswered) {
+                            this.mgTimer--;
+                        } else if (this.mgTimer === 0 && !this.mgAnswered) {
+                            this.answerMinigame(99);
+                        }
+                    }, 1000);
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                get minigameScenario() {
+                    if (!this.minigameScenarios.length) {
+                        this.minigameScenarios = this.activeModule === 'pv' ? [
+                            {
+                            title: "¡Emergencia: Cortocircuito y Humo en Inversor!",
+                            description: "Se detecta olor a quemado y chisporroteo en los bornes DC del inversor principal. El sistema muestra alarma de arco eléctrico.",
+                            options: [
+                                "Accionar la parada de emergencia (EPO), disparar el seccionador DC y evacuar el perímetro.",
+                                "Intentar apagar las chispas con un vaso de agua de la garrafa.",
+                                "Esperar a que el inversor se apague solo mientras se revisa el correo."
+                            ],
+                            correct: 0
+                            },
+                            {
+                                title: "¡Emergencia: Incendio en Caja Combinadora!",
+                                description: "Aparece humo en una caja combinadora del campo FV y el viento dirige el humo hacia el personal.",
+                                options: [
+                                    "Abrir la caja para localizar el fusible quemado.",
+                                    "Activar alarma, aislar desde una zona segura, evacuar y usar el extintor adecuado solo si la ruta es segura.",
+                                    "Rociar agua directamente sobre la caja energizada."
+                                ],
+                                correct: 1
+                            },
+                            {
+                                title: "¡Emergencia: Persona en Contacto con DC!",
+                                description: "Un trabajador queda inmóvil junto a un conductor DC posiblemente energizado.",
+                                options: [
+                                    "Tocar al trabajador y arrastrarlo con las manos desnudas.",
+                                    "Aislar la fuente, llamar a emergencias y no acercarse hasta confirmar ausencia de tensión.",
+                                    "Lanzar una herramienta metálica para separarlo."
+                                ],
+                                correct: 1
+                            }
+                        ] : [
+                            {
+                            title: "¡Emergencia: Alarma de Rayo Inminente en Torre Eólica!",
+                            description: "El sistema de detección atmosférica avisa impacto de rayo en la nacelle en los próximos 30 segundos mientras hay personal trabajando.",
+                            options: [
+                                "Continuar apretando pernos ya que falta poco para terminar.",
+                                "Activar alarma general, descender de inmediato por la escalera usando el sistema anticaídas y asegurar la zona.",
+                                "Refugiarse en el cubo de la base sin notificar a supervisión."
+                            ],
+                            correct: 1
+                            },
+                            {
+                                title: "¡Emergencia: Vibración Anormal en la Góndola!",
+                                description: "La turbina aumenta la vibración y se escucha un golpe repetitivo en la multiplicadora.",
+                                options: [
+                                    "Continuar trabajando hasta identificar visualmente la pieza.",
+                                    "Activar parada de emergencia, mantenerse fuera de la línea de fuego y comunicar la anomalía.",
+                                    "Acercarse al rotor para sujetarlo manualmente."
+                                ],
+                                correct: 1
+                            },
+                            {
+                                title: "¡Emergencia: Trabajador Suspendido!",
+                                description: "Un técnico queda suspendido del arnés tras una caída dentro de la torre.",
+                                options: [
+                                    "Subir sin avisar y desengancharlo inmediatamente.",
+                                    "Activar rescate planificado, comunicar la ubicación y mantener contacto sin improvisar maniobras.",
+                                    "Indicarle que se quite el arnés para bajar más rápido."
+                                ],
+                                correct: 1
+                            }
+                        ];
+                    }
+                    return this.minigameScenarios[this.minigameIdx];
+                },
+
+                answerMinigame(idx) {
+                    if (this.mgAnswered) return;
+                    clearInterval(this.mgInterval);
+                    this.mgAnswered = true;
+                    this.mgSelected = idx;
+                    if (idx === this.minigameScenario.correct) {
+                        this.xp += 75;
+                        this.safetyScore = Math.min(100, this.safetyScore + 10);
+                    } else {
+                        this.safetyScore = Math.max(0, this.safetyScore - 20);
+                    }
+                    this.updateRiskLevel();
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                nextMinigameStep() {
+                    if (this.minigameIdx < this.minigameScenarios.length - 1) {
+                        this.minigameIdx++;
+                        this.mgTimer = 20;
+                        this.mgAnswered = false;
+                        this.mgSelected = null;
+                        this.startMinigameTimer();
+                    } else {
+                        this.goToLotoStage();
+                    }
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                startMinigameTimer() {
+                    clearInterval(this.mgInterval);
+                    this.mgInterval = setInterval(() => {
+                        if (this.mgTimer > 0 && !this.mgAnswered) {
+                            this.mgTimer--;
+                        } else if (this.mgTimer === 0 && !this.mgAnswered) {
+                            this.answerMinigame(99);
+                        }
+                    }, 1000);
+                },
+
+                goToLotoStage() {
+                    clearInterval(this.mgInterval);
+                    this.currentScreen = 'loto';
+                    this.lotoCompleted = false;
+                    this.lotoSteps.forEach(s => s.done = false);
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                clickLotoStep(stepId) {
+                    let step = this.lotoSteps.find(s => s.id === stepId);
+                    if (!step || step.done) return;
+
+                    // Enforce chronological order
+                    let prevStepIndex = this.lotoSteps.findIndex(s => s.id === stepId) - 1;
+                    if (prevStepIndex >= 0 && !this.lotoSteps[prevStepIndex].done) {
+                        return; // Must complete previous step first
+                    }
+
+                    step.done = true;
+                    this.xp += 25;
+
+                    if (this.lotoSteps.every(s => s.done)) {
+                        this.lotoCompleted = true;
+                        this.xp += 50;
+                        if (this.activeModule === 'pv') this.badges[0].unlocked = true;
+                        else this.badges[2].unlocked = true;
+                        this.badges[1].unlocked = true; // LOTO badge
+                        if (this.safetyScore >= 90) this.badges[3].unlocked = true;
+                    }
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                toggleSwitch(id) { const order=['dc','ac','test','earth']; const i=order.indexOf(id); if(i!==this.lotoSwitches.filter(s=>s.on).length){this.lotoMessage='Orden incorrecto: completa el control anterior.'; return;} this.lotoSwitches.find(s=>s.id===id).on=true; this.lotoMessage='Control confirmado. Continúa con el siguiente paso.'; },
+                finishModule() {
+                    this.scoreBreakdown.loto = 20; this.safetyScore = Math.min(100, Math.max(this.safetyScore, this.scoreBreakdown.epp + this.scoreBreakdown.procedure + this.scoreBreakdown.time + this.scoreBreakdown.loto)); this.certificateDate = new Date().toLocaleString('es-MX'); this.persist();
+                    this.currentScreen = 'summary';
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                restartModule() {
+                    this.selectModule(this.activeModule);
+                },
+
+                returnToHome() {
+                    clearInterval(this.timerInterval);
+                    clearInterval(this.mgInterval);
+                    this.currentScreen = 'home';
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+
+                getOptionClass(optIdx) {
+                    if (!this.answered) {
+                        return 'bg-cyber-950/80 border-slate-800 hover:border-slate-700 text-slate-300';
+                    }
+                    if (optIdx === this.currentMission.correctOption) {
+                        return 'bg-emerald-950/40 border-emerald-500 text-emerald-200';
+                    }
+                    if (this.selectedOption === optIdx) {
+                        return 'bg-rose-950/40 border-rose-500 text-rose-200';
+                    }
+                    return 'bg-cyber-950/40 border-slate-900 text-slate-500 opacity-60';
+                },
+
+                getScoreMessage() {
+                    if (this.safetyScore >= 85) return "¡Impresionante desempeño! Has demostrado dominio absoluto de los protocolos de seguridad, EPP y seccionamiento LOTO.";
+                    if (this.safetyScore >= 50) return "Buen trabajo, aunque se registraron algunos fallos en la selección de EPP o tiempos de respuesta. Repasa las normativas OSHA.";
+                    return "Atención: Nivel de riesgo elevado. Es necesario reentrenar en el uso de equipos de protección y secuencias de aislamiento eléctrico.";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
