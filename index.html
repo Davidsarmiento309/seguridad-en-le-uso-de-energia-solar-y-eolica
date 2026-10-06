@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿!DOCTYPE html>
 <html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
@@ -567,6 +567,21 @@
                     </div>
 
                     <div id="certificate" class="bg-gradient-to-br from-slate-900 to-cyan-950/40 border border-cyan-500/30 rounded-2xl p-5 text-left"><div class="flex items-center gap-3"><i data-lucide="badge-check" class="w-8 h-8 text-amber-400"></i><div><h4 class="font-bold text-white">Certificado de participación</h4><p class="text-[11px] text-slate-400" x-text="participantName || 'Participante'"></p></div></div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300"><span>Módulo: <b x-text="moduleName"></b></span><span>Calificación: <b x-text="finalRating"></b></span><span>Fecha/hora: <b x-text="certificateDate"></b></span><span>Folio: <b x-text="folio"></b></span></div><button @click="downloadCertificate()" class="mt-4 w-full py-2 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold">Descargar certificado HTML</button></div>
+                    <section class="bg-slate-950/70 border border-slate-700 rounded-2xl p-5 text-left space-y-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Guardar resultado y enviar informe PDF</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Registra el puntaje en Google Sheets y solicita el informe PDF por correo mediante Apps Script.</p>
+                        </div>
+                        <label class="block text-[11px] font-semibold text-slate-300">Correo del participante
+                            <input type="email" x-model.trim="reportEmail" autocomplete="email" placeholder="nombre@ejemplo.com" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+                        </label>
+                        <label class="block text-[11px] font-semibold text-slate-300">URL de implementación web de Apps Script
+                            <input type="url" x-model.trim="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                        </label>
+                        <button @click="submitReport()" :disabled="reportSending" class="w-full py-2.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-bold disabled:opacity-50" x-text="reportSending ? 'Enviando solicitud…' : 'Enviar resultado a Google Sheets y correo'"></button>
+                        <p x-show="reportStatus" x-text="reportStatus" role="status" class="text-[11px] text-cyan-200"></p>
+                        <p class="text-[10px] leading-relaxed text-slate-500">Apps Script debe estar implementado como aplicación web, con acceso permitido a los usuarios. Por seguridad, escribe el correo de destino aquí; no se usa un correo personal predeterminado.</p>
+                    </section>
                     <div class="flex flex-col sm:flex-row gap-3 pt-2">
                         <button @click="restartModule()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition border border-slate-700 flex items-center justify-center gap-2">
                             <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Repetir Misión
@@ -591,7 +606,7 @@
         function advancedSimulator() {
             return {
                 currentScreen: 'home', // home, mission, loto, minigame, summary
-                participantName: '', mode: 'practica', muted: false, selectedZone: 'field', folio: '', certificateDate: '', scoreBreakdown: {epp:0, procedure:0, time:0, loto:0}, weatherOptions: [{id:'clear',label:'☀️ Despejado',risk:'Riesgo base'},{id:'wind',label:'💨 Viento alto',risk:'Riesgo elevado en altura'},{id:'storm',label:'⛈️ Tormenta',risk:'Trabajo suspendido'}], weather: {id:'clear',label:'☀️ Despejado',risk:'Riesgo base'}, zones: [{id:'field',name:'Campo FV',icon:'☀️'},{id:'inverter',name:'Inversor',icon:'🔌'},{id:'turbine',name:'Turbina',icon:'🌀'}], lotoSwitches: [{id:'dc',label:'Seccionador DC',on:false},{id:'ac',label:'Seccionador AC',on:false},{id:'test',label:'Medidor CAT IV',on:false},{id:'earth',label:'Tierra temporal',on:false}], lotoMessage: 'Activa los controles siguiendo la secuencia LOTO.', emergencyFlow: 'shock',
+                participantName: '', reportEmail: '', appsScriptUrl: 'https://script.google.com/macros/s/AKfycbz-2hQXdyijbgCErNf8WufY4_4s4vUM7id3ohAKaDOUrMZldbUA9peLoG24OATyi5Qy/exec', reportStatus: '', reportSending: false, mode: 'practica', muted: false, selectedZone: 'field', folio: '', certificateDate: '', scoreBreakdown: {epp:0, procedure:0, time:0, loto:0}, weatherOptions: [{id:'clear',label:'☀️ Despejado',risk:'Riesgo base'},{id:'wind',label:'💨 Viento alto',risk:'Riesgo elevado en altura'},{id:'storm',label:'⛈️ Tormenta',risk:'Trabajo suspendido'}], weather: {id:'clear',label:'☀️ Despejado',risk:'Riesgo base'}, zones: [{id:'field',name:'Campo FV',icon:'☀️'},{id:'inverter',name:'Inversor',icon:'🔌'},{id:'turbine',name:'Turbina',icon:'🌀'}], lotoSwitches: [{id:'dc',label:'Seccionador DC',on:false},{id:'ac',label:'Seccionador AC',on:false},{id:'test',label:'Medidor CAT IV',on:false},{id:'earth',label:'Tierra temporal',on:false}], lotoMessage: 'Activa los controles siguiendo la secuencia LOTO.', emergencyFlow: 'shock',
                 activeModule: 'pv', // pv or wind
                 safetyScore: 100,
                 xp: 0,
@@ -887,6 +902,48 @@
                 continueProgress() { this.currentScreen='mission'; this.startTimer(); },
                 setMode(m) { this.mode=m; this.persist(); }, setWeather(id) { this.weather=this.weatherOptions.find(w=>w.id===id)||this.weatherOptions[0]; if(id==='storm') this.riskLevel='CRÍTICO'; this.persist(); }, toggleMute() { this.muted=!this.muted; this.persist(); setTimeout(()=>lucide.createIcons(),20); },
                 setEmergencyFlow(flow) { this.emergencyFlow=flow; },
+                async submitReport() {
+                    const endpoint = this.appsScriptUrl.trim();
+                    const email = this.reportEmail.trim();
+                    if (!this.participantName.trim()) {
+                        this.reportStatus = 'Escribe el nombre del participante antes de enviar el informe.';
+                        return;
+                    }
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        this.reportStatus = 'Escribe un correo electrónico válido para recibir el PDF.';
+                        return;
+                    }
+                    if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)) {
+                        this.reportStatus = 'La URL debe ser la URL /exec de una implementación web de Google Apps Script.';
+                        return;
+                    }
+                    if (this.reportSending) return;
+                    this.reportSending = true;
+                    this.reportStatus = '';
+                    const payload = {
+                        participantName: this.participantName.trim(),
+                        email,
+                        moduleName: this.moduleName,
+                        safetyScore: this.safetyScore,
+                        finalRating: this.finalRating,
+                        xp: this.xp,
+                        folio: this.folio,
+                        scoreBreakdown: this.scoreBreakdown
+                    };
+                    try {
+                        await fetch(endpoint, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                            body: JSON.stringify(payload)
+                        });
+                        this.reportStatus = 'Solicitud enviada. El navegador no permite confirmar la respuesta del servidor; revisa la hoja de cálculo y el correo para verificar el registro.';
+                    } catch (error) {
+                        this.reportStatus = 'No se pudo enviar la solicitud. Revisa tu conexión y que la implementación de Apps Script esté activa.';
+                    } finally {
+                        this.reportSending = false;
+                    }
+                },
                 exportResults() { const data={participante:this.participantName,modulo:this.moduleName,puntaje:this.safetyScore,calificacion:this.finalRating,desglose:this.scoreBreakdown,fecha:new Date().toISOString()}; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='ecosafe-resultados.json';a.click(); },
                 downloadCertificate() { const html=`<!doctype html><html lang='es'><meta charset='utf-8'><title>Certificado EcoSafe</title><style>body{font-family:Arial;background:#07111f;color:#fff;padding:12%;text-align:center}main{border:4px solid #f59e0b;padding:50px;background:#10253b}h1{color:#fbbf24}</style><main><h1>ECOSAFE PRO</h1><h2>Certificado de participación</h2><p>Se certifica a <b>${this.participantName||'Participante'}</b></p><p>${this.moduleName} · Puntaje ${this.safetyScore}% · ${this.finalRating}</p><p>Fecha y hora: ${this.certificateDate} · Folio: ${this.folio}</p><small>OSHA 1910.333 · NFPA 70E · IEC 60364/61439</small></main></html>`; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download=`certificado-${this.folio}.html`;a.click(); },
                 init() { this.restore();
@@ -1178,8 +1235,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
